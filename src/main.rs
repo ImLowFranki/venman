@@ -13,6 +13,7 @@ use std::thread;
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 use std::env;
 
+
 pub fn delete_venv() -> std::io::Result<()> {
     let _ = list_venvs();
     let venv_name = prompt("Choose a VENV to delete > ");
@@ -279,11 +280,21 @@ fn create_env(path: &str, name: String, packages: &str) -> Result<()> {
 
     create_dir_all(env_path)?;
 
-    Command::new("python3")
+    let venv_output = Command::new("python")
         .arg("-m")
         .arg("venv")
         .arg(env_path)
         .output()?;
+
+    if !venv_output.status.success() {
+        eprintln!("Failed to create virtual environment: {}", 
+            String::from_utf8_lossy(&venv_output.stderr)
+        );
+        return Err(io::Error::new(
+            io::ErrorKind::Other, 
+            "Failed to create virtual environment"
+        ));
+    }
     
     running_env.store(false, Ordering::Relaxed);
     spinner_thread_env.join().unwrap();
@@ -300,17 +311,33 @@ fn create_env(path: &str, name: String, packages: &str) -> Result<()> {
             );
         });
 
-        let pip_path = env_path.join("bin").join("pip");
+        let pip_path = if cfg!(windows) {
+            env_path.join("Scripts").join("pip.exe")
+        } else {
+            env_path.join("bin").join("pip")
+        };
+
         let package_list: Vec<&str> = packages.split_whitespace().collect();
         
-        Command::new(&pip_path)
+        let pip_output = Command::new(&pip_path)
             .arg("install")
             .args(&package_list)
             .output()?;
+
+        if !pip_output.status.success() {
+            eprintln!("Failed to install packages: {}", 
+                String::from_utf8_lossy(&pip_output.stderr)
+            );
+            return Err(io::Error::new(
+                io::ErrorKind::Other, 
+                "Failed to install packages"
+            ));
+        }
         
         running_packages.store(false, Ordering::Relaxed);
         spinner_thread_packages.join().unwrap();
     }
+
     print!("\x1B[2J\x1B[1;1H");
     println!("{} {} {}", 
         "Virtual environment".green(), 
@@ -371,36 +398,28 @@ struct Env {
 impl Env {
     fn create(name: String, description: String, packages: String) -> Result<()> {
         
-        #[cfg(target_os = "linux")]
-        {
-            let mut table = toml::Table::new();
-            let mut env_table = toml::Table::new();
+        let mut table = toml::Table::new();
+        let mut env_table = toml::Table::new();
 
-            env_table.insert("description".to_string(), toml::Value::String(description));
-            env_table.insert("packages".to_string(), toml::Value::String(packages.clone()));
+        env_table.insert("description".to_string(), toml::Value::String(description));
+        env_table.insert("packages".to_string(), toml::Value::String(packages.clone()));
 
-            table.insert(name.clone(), toml::Value::Table(env_table));
+        table.insert(name.clone(), toml::Value::Table(env_table));
 
-            let toml_string = toml::to_string(&table)
-                .map_err(|e| io::Error::new(ErrorKind::Other, e.to_string()))?;
+        let toml_string = toml::to_string(&table)
+            .map_err(|e| io::Error::new(ErrorKind::Other, e.to_string()))?;
                         
-            let home_dir = dirs::home_dir().expect("Could not find home folder");
-            let venman_dir = home_dir.join("venman");
-            create_dir_all(&venman_dir)?;
+        let home_dir = dirs::home_dir().expect("Could not find home folder");
+        let venman_dir = home_dir.join("venman");
+        create_dir_all(&venman_dir)?;
 
-            let venplace = venman_dir.join("venvs");
-            create_dir_all(&venplace)?;
-            let venplace = venplace.join(&name);
+        let venplace = venman_dir.join("venvs");
+        create_dir_all(&venplace)?;
+        let venplace = venplace.join(&name);
             
-            append_to_file("venvs.toml", &toml_string)?;
+        append_to_file("venvs.toml", &toml_string)?;
             
-            create_env(venplace.to_str().unwrap(), name, &packages)?;
-        }
-        
-        #[cfg(target_os = "windows")]
-        {
-            println!("Creating ENV \"{}\" for Windows OS...", name)
-        }
+        create_env(venplace.to_str().unwrap(), name, &packages)?;
         
         Ok(())
     }
