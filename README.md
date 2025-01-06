@@ -7,42 +7,29 @@ A fast, simple, and elegant Python virtual environment manager, built in Rust.
 - 🚀 Quick virtual environment creation
 - 📦 Easy package management
 - 🔍 List and manage multiple environments
-- 💻 Cross-platform support (Linux, macOS)
+- 💻 Cross-platform support (Linux, macOS, Windows)
 - 🎨 Colorful and intuitive CLI
 
-## 🛠 Prerequisites
+## 💾 Installation
 
+Go to the release page
+
+Download bin executable for your OS and add it to path
+
+## 💻 Build
+
+Requirements
 - Rust
-- Python 3.7+
 - Cargo
-
-## 🚀 Installation
-### Linux
-	
 ```bash
-# Clone the repository
+# Enter your installation directory
 git clone https://github.com/ImLowFranki/venman.git
+
 cd venman
 
-# Build the project
 cargo build --release
-
-# Install the binary
-sudo cp target/release/venman /usr/local/bin/
 ```
-	
-### Windows
 
-```powershell
-# Clone the repository
-git clone https://github.com/ImLowFranki/venman.git
-cd venman
-
-# Build the project
-cargo build --release
-
-# Add to PATH manually or copy binary
-```	
 ## 💡 Usage
 
 ### Create Virtual Environment
@@ -53,14 +40,14 @@ venman
 # - Environment name
 # - Description (optional)
 # - Packages (optional)
-	```
+```
 	
 ### Activate Virtual Environment
 ```bash
 venman
 # Choose option 2
 # Select environment to activate
-	```
+```
 	
 ### List Virtual Environments
 ```bash
@@ -72,6 +59,7 @@ venman
 ```bash
 venman
 # Choose option 4
+# Enter venv to delete
 ```
 
 ## 🔧 Advanced Usage
@@ -103,6 +91,6 @@ venman
 ## 🐛 Troubleshooting
 
 - Ensure Python 3 is installed
-- Check Rust and Cargo are in your PATH
+- Check Rust and Cargo and VenMan are in your PATH
 - Verify permissions for binary installation
 	
