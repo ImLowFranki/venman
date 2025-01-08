@@ -13,7 +13,6 @@ use std::thread;
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 use std::env;
 
-
 pub fn delete_venv() -> std::io::Result<()> {
     let _ = list_venvs();
     let venv_name = prompt("Choose a VENV to delete > ");
@@ -90,14 +89,14 @@ pub fn activate_venv() {
 
     if !venvs_path.exists() {
         println!("{}", "No virtual environments found.".yellow());
-        return ;
+        return;
     }
 
     let config_content = match std::fs::read_to_string(&config_path) {
         Ok(content) => content,
         Err(_) => {
             println!("{}", "Could not read configuration file.".red());
-            return ;
+            return;
         }
     };
 
@@ -105,20 +104,24 @@ pub fn activate_venv() {
         Ok(cfg) => cfg,
         Err(_) => {
             println!("{}", "Invalid configuration format.".red());
-            return ;
+            return;
         }
     };
 
     let venv_path = venvs_path.join(&venv_name);
     if !venv_path.exists() {
         println!("{} {}", "Virtual environment".red(), format!("'{}' not found.", venv_name).red());
-        return ;
+        return;
     }
 
+    #[cfg(windows)]
+    let activate_path = venv_path.join("Scripts").join("activate.bat");
+    #[cfg(not(windows))]
     let activate_path = venv_path.join("bin").join("activate");
+
     if !activate_path.exists() {
         println!("{}", "Activation script not found.".red());
-        return ;
+        return;
     }
 
     if let Some(env_config) = config.get(&venv_name) {
@@ -136,11 +139,23 @@ pub fn activate_venv() {
         println!("{}: {}", "Packages".bright_cyan(), packages);
     }
 
-    Command::new("bash")
-        .arg("-c")
-        .arg(format!("source {}/bin/activate && exec $SHELL", venv_path.display()))
-        .status()
-        .expect("Failed to start shell");
+    #[cfg(windows)]
+    {
+        Command::new("cmd")
+            .arg("/C")
+            .arg(activate_path.display().to_string())
+            .status()
+            .expect("Failed to activate virtual environment");
+    }
+
+    #[cfg(not(windows))]
+    {
+        Command::new("bash")
+            .arg("-c")
+            .arg(format!("source {}/bin/activate && exec $SHELL", venv_path.display()))
+            .status()
+            .expect("Failed to start shell");
+    }
 }
 
 pub fn list_venv_names() -> std::io::Result<()> {
